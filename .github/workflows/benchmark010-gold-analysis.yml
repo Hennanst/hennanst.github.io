@@ -16,10 +16,10 @@ jobs:
           mkdir -p gold
           LANDING='https://www.taguai.sp.gov.br/licitacao/detalhe/627/pstrongcontratacao-de-empresa-especializada-para-execucao-de-reforma-da-cobertura-do-centro-de-referencia-de-assistencia-social-cras-do-municipio-de-taguai-convenio-n0011672024strongp/'
           UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36'
-          curl -sS -L -A "$UA" -c cookies.txt -b cookies.txt -H 'Accept-Language: pt-BR,pt;q=0.9,en;q=0.8' "$LANDING" -o landing.html
+          curl -sS -L -A "$UA" -c cookies.txt -b cookies.txt "$LANDING" -o landing.html || true
           curl -fL --compressed --retry 3 --retry-delay 2 -A "$UA" -e "$LANDING" -c cookies.txt -b cookies.txt \
-            -H 'Accept: application/pdf,application/octet-stream;q=0.9,*/*;q=0.8' \
-            'https://www.taguai.sp.gov.br/licitacao/download/2803/' -o gold/ANALISE_DA_PROPOSTA_OFICIAL.pdf
+            'https://www.taguai.sp.gov.br/public/admin/globalarq/licitacao/arquivo/4664c729975663be30a92483d0b89a02.pdf' \
+            -o gold/ANALISE_DA_PROPOSTA_OFICIAL.pdf
           file gold/ANALISE_DA_PROPOSTA_OFICIAL.pdf
           sha256sum gold/ANALISE_DA_PROPOSTA_OFICIAL.pdf > gold/SHA256SUMS.txt
       - name: Upload official analysis artifact
