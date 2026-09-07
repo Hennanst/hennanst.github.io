@@ -14,15 +14,45 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p packages
-          curl -fL --retry 3 --retry-delay 2 'https://www.taguai.sp.gov.br/licitacao/download/2716/' -o packages/CONSPRU.zip
-          curl -fL --retry 3 --retry-delay 2 'https://www.taguai.sp.gov.br/licitacao/download/2717/' -o packages/PORTAL_PARTE1.zip
-          curl -fL --retry 3 --retry-delay 2 'https://www.taguai.sp.gov.br/licitacao/download/2718/' -o packages/PORTAL_PARTE2.zip
-          curl -fL --retry 3 --retry-delay 2 'https://www.taguai.sp.gov.br/licitacao/download/2719/' -o packages/LIBRAS_PARTE1.zip
-          curl -fL --retry 3 --retry-delay 2 'https://www.taguai.sp.gov.br/licitacao/download/2720/' -o packages/LIBRAS_PARTE2.zip
-          curl -fL --retry 3 --retry-delay 2 'https://www.taguai.sp.gov.br/licitacao/download/2721/' -o packages/LIBRAS_PARTE3.zip
-          sha256sum packages/* > packages/SHA256SUMS.txt
+          LANDING='https://www.taguai.sp.gov.br/licitacao/detalhe/627/pstrongcontratacao-de-empresa-especializada-para-execucao-de-reforma-da-cobertura-do-centro-de-referencia-de-assistencia-social-cras-do-municipio-de-taguai-convenio-n0011672024strongp/'
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36'
+          curl -sS -L -A "$UA" -c cookies.txt -b cookies.txt -H 'Accept-Language: pt-BR,pt;q=0.9,en;q=0.8' "$LANDING" -o landing.html || true
+
+          fetch_one() {
+            local static_url="$1" controller_url="$2" out="$3"
+            echo "Fetching $out"
+            if curl -fL --compressed --retry 2 --retry-delay 2 -A "$UA" -e "$LANDING" -c cookies.txt -b cookies.txt \
+              -H 'Accept: application/zip,application/octet-stream;q=0.9,*/*;q=0.8' \
+              -H 'Accept-Language: pt-BR,pt;q=0.9,en;q=0.8' \
+              "$static_url" -o "$out"; then
+              return 0
+            fi
+            echo 'Static URL failed; trying controller endpoint.'
+            curl -fL --compressed --retry 2 --retry-delay 2 -A "$UA" -e "$LANDING" -c cookies.txt -b cookies.txt \
+              -H 'Accept: application/zip,application/octet-stream;q=0.9,*/*;q=0.8' \
+              -H 'Accept-Language: pt-BR,pt;q=0.9,en;q=0.8' \
+              "$controller_url" -o "$out"
+          }
+
+          fetch_one 'https://www.taguai.sp.gov.br/public/admin/globalarq/licitacao/arquivo/a7f722ffa080f06a8a0e0020b4439bb2.zip' 'https://www.taguai.sp.gov.br/licitacao/download/2716/' packages/CONSPRU.zip
+          fetch_one 'https://www.taguai.sp.gov.br/public/admin/globalarq/licitacao/arquivo/0de9ce43937240c1884cac23bfa73ef8.zip' 'https://www.taguai.sp.gov.br/licitacao/download/2717/' packages/PORTAL_PARTE1.zip
+          fetch_one 'https://www.taguai.sp.gov.br/public/admin/globalarq/licitacao/arquivo/b91c35df60ad195f84ae81f72dcc2764.zip' 'https://www.taguai.sp.gov.br/licitacao/download/2718/' packages/PORTAL_PARTE2.zip
+          fetch_one 'https://www.taguai.sp.gov.br/public/admin/globalarq/licitacao/arquivo/ff738635f4d8a9fb093a53ec84ab3f0d.zip' 'https://www.taguai.sp.gov.br/licitacao/download/2719/' packages/LIBRAS_PARTE1.zip
+          fetch_one 'https://www.taguai.sp.gov.br/public/admin/globalarq/licitacao/arquivo/0bd8ad7002e20dbbff5c17ab53b403fc.zip' 'https://www.taguai.sp.gov.br/licitacao/download/2720/' packages/LIBRAS_PARTE2.zip
+          fetch_one 'https://www.taguai.sp.gov.br/public/admin/globalarq/licitacao/arquivo/3aea7ccb025a7337d7f93f9397abd9f9.zip' 'https://www.taguai.sp.gov.br/licitacao/download/2721/' packages/LIBRAS_PARTE3.zip
+
+          sha256sum packages/*.zip > packages/SHA256SUMS.txt
           file packages/* > packages/FILE_TYPES.txt
           ls -lh packages > packages/LISTING.txt
+          python - <<'PY'
+          import zipfile, pathlib, sys
+          for p in pathlib.Path('packages').glob('*.zip'):
+              if not zipfile.is_zipfile(p):
+                  print(f'NOT_ZIP {p}')
+                  sys.exit(2)
+              with zipfile.ZipFile(p) as z:
+                  print(p.name, len(z.infolist()), 'members')
+          PY
       - name: Upload immutable input packages
         uses: actions/upload-artifact@v4
         with:
