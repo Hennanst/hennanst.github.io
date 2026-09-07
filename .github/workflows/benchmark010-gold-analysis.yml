@@ -1,0 +1,31 @@
+name: Benchmark 010 Gold Analysis
+
+on:
+  push:
+    branches:
+      - benchmark-010-fetch
+
+jobs:
+  fetch-gold-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch official analysis after technical freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p gold
+          LANDING='https://www.taguai.sp.gov.br/licitacao/detalhe/627/pstrongcontratacao-de-empresa-especializada-para-execucao-de-reforma-da-cobertura-do-centro-de-referencia-de-assistencia-social-cras-do-municipio-de-taguai-convenio-n0011672024strongp/'
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36'
+          curl -sS -L -A "$UA" -c cookies.txt -b cookies.txt -H 'Accept-Language: pt-BR,pt;q=0.9,en;q=0.8' "$LANDING" -o landing.html
+          curl -fL --compressed --retry 3 --retry-delay 2 -A "$UA" -e "$LANDING" -c cookies.txt -b cookies.txt \
+            -H 'Accept: application/pdf,application/octet-stream;q=0.9,*/*;q=0.8' \
+            'https://www.taguai.sp.gov.br/licitacao/download/2803/' -o gold/ANALISE_DA_PROPOSTA_OFICIAL.pdf
+          file gold/ANALISE_DA_PROPOSTA_OFICIAL.pdf
+          sha256sum gold/ANALISE_DA_PROPOSTA_OFICIAL.pdf > gold/SHA256SUMS.txt
+      - name: Upload official analysis artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark010-gold-analysis
+          path: gold/
+          if-no-files-found: error
+          retention-days: 7
