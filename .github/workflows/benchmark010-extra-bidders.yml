@@ -1,0 +1,38 @@
+name: Benchmark 010 Extra Bidders
+
+on:
+  push:
+    branches:
+      - benchmark-010-fetch
+
+jobs:
+  fetch-extra:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download remaining original bidder packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p extra
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36'
+          LANDING='https://www.taguai.sp.gov.br/licitacao/detalhe/627/pstrongcontratacao-de-empresa-especializada-para-execucao-de-reforma-da-cobertura-do-centro-de-referencia-de-assistencia-social-cras-do-municipio-de-taguai-convenio-n0011672024strongp/'
+          curl -sS -L -A "$UA" -c cookies.txt -b cookies.txt "$LANDING" -o landing.html || true
+          curl -fL --compressed --retry 3 -A "$UA" -e "$LANDING" -c cookies.txt -b cookies.txt 'https://www.taguai.sp.gov.br/public/admin/globalarq/licitacao/arquivo/8b2ccb4995fd8422922eb67d3a6e9b87.zip' -o extra/CANDIDATE_A.zip
+          curl -fL --compressed --retry 3 -A "$UA" -e "$LANDING" -c cookies.txt -b cookies.txt 'https://www.taguai.sp.gov.br/public/admin/globalarq/licitacao/arquivo/6ecfca4158fcb550c115d3e8ae4219a1.zip' -o extra/CANDIDATE_B.zip
+          sha256sum extra/*.zip > extra/SHA256SUMS.txt
+          python - <<'PY'
+          import zipfile, pathlib
+          with open('extra/MEMBER_LIST.txt','w',encoding='utf-8') as out:
+              for p in sorted(pathlib.Path('extra').glob('*.zip')):
+                  out.write(f'### {p.name}\n')
+                  with zipfile.ZipFile(p) as z:
+                      for i in z.infolist():
+                          if not i.is_dir(): out.write(i.filename+'\n')
+          PY
+      - name: Upload remaining bidder inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark010-extra-bidders
+          path: extra/
+          if-no-files-found: error
+          retention-days: 7
