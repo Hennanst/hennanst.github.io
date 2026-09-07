@@ -1,0 +1,32 @@
+name: Benchmark 010 Fetch
+
+on:
+  push:
+    branches:
+      - benchmark-010-fetch
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download original bidder packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p packages
+          curl -fL --retry 3 --retry-delay 2 'https://www.taguai.sp.gov.br/licitacao/download/2716/' -o packages/CONSPRU.zip
+          curl -fL --retry 3 --retry-delay 2 'https://www.taguai.sp.gov.br/licitacao/download/2717/' -o packages/PORTAL_PARTE1.zip
+          curl -fL --retry 3 --retry-delay 2 'https://www.taguai.sp.gov.br/licitacao/download/2718/' -o packages/PORTAL_PARTE2.zip
+          curl -fL --retry 3 --retry-delay 2 'https://www.taguai.sp.gov.br/licitacao/download/2719/' -o packages/LIBRAS_PARTE1.zip
+          curl -fL --retry 3 --retry-delay 2 'https://www.taguai.sp.gov.br/licitacao/download/2720/' -o packages/LIBRAS_PARTE2.zip
+          curl -fL --retry 3 --retry-delay 2 'https://www.taguai.sp.gov.br/licitacao/download/2721/' -o packages/LIBRAS_PARTE3.zip
+          sha256sum packages/* > packages/SHA256SUMS.txt
+          file packages/* > packages/FILE_TYPES.txt
+          ls -lh packages > packages/LISTING.txt
+      - name: Upload immutable input packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark010-input-packages
+          path: packages/
+          if-no-files-found: error
+          retention-days: 7
